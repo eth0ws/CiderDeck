@@ -106,6 +106,17 @@ Object.keys(actions).forEach(actionKey => {
         if (!window.contexts[actionKey].includes(context)) {
             window.contexts[actionKey].push(context);
             console.debug(`[DEBUG] [Context] Context added for ${actionKey}: ${context}`);
+
+            // Store coordinate information for grid-based actions
+            window.actionCoordinates = window.actionCoordinates || {};
+            window.actionCoordinates[actionKey] = window.actionCoordinates[actionKey] || {};
+            if (payload?.coordinates) {
+                window.actionCoordinates[actionKey][context] = {
+                    device: payload.device,
+                    row: payload.coordinates.row,
+                    column: payload.coordinates.column
+                };
+            }
         }
         
         // Handle song display settings if this is a song name action
@@ -149,6 +160,9 @@ Object.keys(actions).forEach(actionKey => {
         if (index > -1) {
             window.contexts[actionKey].splice(index, 1);
             console.debug(`[DEBUG] [Context] Context removed for ${actionKey}: ${context}`);
+            if (window.actionCoordinates && window.actionCoordinates[actionKey]) {
+                delete window.actionCoordinates[actionKey][context];
+            }
         }
 
         if (actionKey === 'ciderPlaybackAction' || actionKey === 'albumArtAction') {

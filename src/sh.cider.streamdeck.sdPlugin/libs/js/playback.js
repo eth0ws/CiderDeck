@@ -39,6 +39,73 @@ let currentRepeatMode = 0; // 0: off, 1: repeat one, 2: repeat all, 3: disabled
 let currentShuffleMode = 0; // 0: off, 1: on, 2: disabled
 
 /**
+ * Splits a base64 album art image across multiple Album Art actions arranged
+ * in a grid. If only one action is present, the image is used directly.
+ * @param {string} base64Img - The base64 encoded image
+ */
+function renderAlbumArtGrid(base64Img) {
+    const contexts = window.contexts.albumArtAction || [];
+    if (contexts.length === 0) return;
+
+    const coordMap = window.actionCoordinates?.albumArtAction || {};
+
+    // Group contexts by device so each device grid is handled independently
+    const byDevice = {};
+    contexts.forEach(ctx => {
+        const info = coordMap[ctx] || {};
+        const dev = info.device || 'default';
+        if (!byDevice[dev]) byDevice[dev] = [];
+        byDevice[dev].push({ context: ctx, row: info.row, column: info.column });
+    });
+
+    Object.values(byDevice).forEach(entries => {
+        // If any entry lacks coordinates or only one button is used, simply set the image
+        if (entries.length === 1 || entries.some(e => e.row === undefined || e.column === undefined)) {
+            entries.forEach(e => $SD.setImage(e.context, base64Img, 0));
+            return;
+        }
+
+        const rows = entries.map(e => e.row);
+        const cols = entries.map(e => e.column);
+        const minRow = Math.min(...rows);
+        const maxRow = Math.max(...rows);
+        const minCol = Math.min(...cols);
+        const maxCol = Math.max(...cols);
+
+        const widthKeys = maxCol - minCol + 1;
+        const heightKeys = maxRow - minRow + 1;
+        const keySize = 144;
+
+        const gridCanvas = document.createElement('canvas');
+        gridCanvas.width = widthKeys * keySize;
+        gridCanvas.height = heightKeys * keySize;
+        const gridCtx = gridCanvas.getContext('2d');
+
+        const img = new Image();
+        img.onload = () => {
+            gridCtx.drawImage(img, 0, 0, gridCanvas.width, gridCanvas.height);
+
+            entries.forEach(e => {
+                const sliceCanvas = document.createElement('canvas');
+                sliceCanvas.width = keySize;
+                sliceCanvas.height = keySize;
+                const sliceCtx = sliceCanvas.getContext('2d');
+                const sx = (e.column - minCol) * keySize;
+                const sy = (e.row - minRow) * keySize;
+                sliceCtx.drawImage(gridCanvas, sx, sy, keySize, keySize, 0, 0, keySize, keySize);
+                const part = sliceCanvas.toDataURL('image/png');
+                if (window.CiderDeckUtils && window.CiderDeckUtils.setImage) {
+                    window.CiderDeckUtils.setImage(e.context, part, 0);
+                } else {
+                    $SD.setImage(e.context, part, 0);
+                }
+            });
+        };
+        img.src = base64Img;
+    });
+}
+
+/**
  * Sets default playback states for all controls
  */
 async function setDefaults() {
@@ -130,14 +197,7 @@ async function setData({ state, attributes }) {
         if (utils && utils.getBase64Image) {
             utils.getBase64Image(artwork).then(art64 => {
                 artworkLogger.debug(`Successfully converted artwork to base64`);
-                window.contexts.albumArtAction?.forEach(context => {
-                    artworkLogger.debug(`Setting album art for context: ${context}`);
-                    if (utils.setImage) {
-                        utils.setImage(context, art64, 0);
-                    } else {
-                        $SD.setImage(context, art64, 0);
-                    }
-                });
+                renderAlbumArtGrid(art64);
                 if (window.contexts.ciderPlaybackAction && window.contexts.ciderPlaybackAction[0]) {
                     // Check if user wants to show artwork on dial or use default Cider logo
                     const showArtworkOnDial = window.ciderDeckSettings?.dial?.showArtworkOnDial ?? true;
@@ -445,5 +505,6 @@ window.CiderDeckPlayback = {
     getCurrentRepeatMode: () => currentRepeatMode,
     getCurrentShuffleMode: () => currentShuffleMode,
     setCurrentRepeatMode: (mode) => { currentRepeatMode = mode; },
-    setCurrentShuffleMode: (mode) => { currentShuffleMode = mode; }
+    setCurrentShuffleMode: (mode) => { currentShuffleMode = mode; },
+    renderAlbumArtGrid
 };
