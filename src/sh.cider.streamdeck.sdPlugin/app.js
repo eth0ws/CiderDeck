@@ -218,6 +218,17 @@ Object.keys(actions).forEach(actionKey => {
             case 'ciderLogoAction':
                 console.warn(`[DEBUG] [Action] Interesting decision?`);
                 break;
+            case 'albumArtAction':
+                // Allow the album art button itself to toggle playback
+                CiderDeckUtils.comRPC("POST", "playpause");
+                setTimeout(() => {
+                    CiderDeckUtils.comRPC("GET", "now-playing").then(data => {
+                        if (data && data.status === "ok") {
+                            CiderDeckPlayback.setManualData(data.info);
+                        }
+                    });
+                }, 1000);
+                break;
             default:
                 console.warn(`[DEBUG] [Action] No handler for ${actionKey}`);
                 break;
