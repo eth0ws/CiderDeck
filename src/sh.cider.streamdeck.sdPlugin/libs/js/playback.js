@@ -38,6 +38,10 @@ const debouncedPlaybackInfo = debounce(logger.info.bind(logger), 200);
 let currentRepeatMode = 0; // 0: off, 1: repeat one, 2: repeat all, 3: disabled
 let currentShuffleMode = 0; // 0: off, 1: on, 2: disabled
 
+// Dimensions for Stream Deck buttons and bezel spacing
+const KEY_SIZE = 144;
+const BEZEL_SIZE = 16; // Approximate space between buttons
+
 /**
  * Splits a base64 album art image across multiple Album Art actions arranged
  * in a grid. If only one action is present, the image is used directly.
@@ -74,11 +78,11 @@ function renderAlbumArtGrid(base64Img) {
 
         const widthKeys = maxCol - minCol + 1;
         const heightKeys = maxRow - minRow + 1;
-        const keySize = 144;
 
+        // Account for gaps between buttons so the artwork looks continuous
         const gridCanvas = document.createElement('canvas');
-        gridCanvas.width = widthKeys * keySize;
-        gridCanvas.height = heightKeys * keySize;
+        gridCanvas.width = widthKeys * KEY_SIZE + (widthKeys - 1) * BEZEL_SIZE;
+        gridCanvas.height = heightKeys * KEY_SIZE + (heightKeys - 1) * BEZEL_SIZE;
         const gridCtx = gridCanvas.getContext('2d');
 
         const img = new Image();
@@ -87,12 +91,12 @@ function renderAlbumArtGrid(base64Img) {
 
             entries.forEach(e => {
                 const sliceCanvas = document.createElement('canvas');
-                sliceCanvas.width = keySize;
-                sliceCanvas.height = keySize;
+                sliceCanvas.width = KEY_SIZE;
+                sliceCanvas.height = KEY_SIZE;
                 const sliceCtx = sliceCanvas.getContext('2d');
-                const sx = (e.column - minCol) * keySize;
-                const sy = (e.row - minRow) * keySize;
-                sliceCtx.drawImage(gridCanvas, sx, sy, keySize, keySize, 0, 0, keySize, keySize);
+                const sx = (e.column - minCol) * (KEY_SIZE + BEZEL_SIZE);
+                const sy = (e.row - minRow) * (KEY_SIZE + BEZEL_SIZE);
+                sliceCtx.drawImage(gridCanvas, sx, sy, KEY_SIZE, KEY_SIZE, 0, 0, KEY_SIZE, KEY_SIZE);
                 const part = sliceCanvas.toDataURL('image/png');
                 if (window.CiderDeckUtils && window.CiderDeckUtils.setImage) {
                     window.CiderDeckUtils.setImage(e.context, part, 0);
