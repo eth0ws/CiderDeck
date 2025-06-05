@@ -8,6 +8,7 @@ CiderDeck is a plugin for the Elgato Stream Deck that allows you to control your
 Using CiderDeck you can do the following
 
 - Show currently playing song's album art.
+- Place multiple Album Art buttons in a grid to form a single large artwork with automatic bezel correction.
 - Show currently playing song's name.
 - Skip/Rewind
 - Play/Pause
